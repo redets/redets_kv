@@ -1,0 +1,13 @@
+{application, redets, [
+    {description, "Storage engine inspired by Redis and ETS."},
+    {vsn, "0.0.0"},
+    {modules, []},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        sasl
+    ]},
+    {mod, {redets_app, []}},
+    {env, []}
+]}.
