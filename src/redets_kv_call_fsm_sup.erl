@@ -6,17 +6,16 @@
 %%% @end
 %%% Created :   26 Jun 2013 by Andrew Bennett <andrew@pagodabox.com>
 %%%-------------------------------------------------------------------
--module(redets_sup).
+-module(redets_kv_call_fsm_sup).
 -behaviour(supervisor).
 
+-include("redets_kv.hrl").
+
 %% API
--export([start_link/0]).
+-export([start_link/0, call/4]).
 
 %% Supervisor callbacks
 -export([init/1]).
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 
 %%%===================================================================
 %%% API functions
@@ -25,15 +24,26 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+call(Store, Op, Params, From) ->
+    supervisor:start_child(?MODULE, [#call{
+        store=Store,
+        op=Op,
+        params=Params,
+        from=From
+    }]).
+
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
 
 init([]) ->
-    redets_server = ets:new(redets_server, [ordered_set, public, named_table]),
-    {ok, {{one_for_one, 5, 10}, [
-        ?CHILD(redets_server, worker),
-        {redets_fsm_sup,
-            {redets_fsm_sup, start_link, []},
-            permanent, infinity, supervisor, [redets_fsm_sup]}
-    ]}}.
+    FSM = {undefined,
+        {redets_kv_call_fsm, start_link, []},
+        temporary, 5000, worker, [redets_kv_call_fsm]},
+    Specs = [FSM],
+    Restart = {simple_one_for_one, 1, 1},
+    {ok, {Restart, Specs}}.
+
+%%%-------------------------------------------------------------------
+%%% Internal functions
+%%%-------------------------------------------------------------------

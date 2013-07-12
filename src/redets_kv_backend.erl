@@ -6,15 +6,19 @@
 %%% @end
 %%% Created :   2 Jul 2013 by Andrew Bennett <andrew@pagodabox.com>
 %%%-------------------------------------------------------------------
--module(redets_backend).
+-module(redets_kv_backend).
 
--type bucket() :: atom() | {atom(), bucket()}.
+-type bucket() :: atom() | {atom(), atom()}.
 -type match_spec() :: ets:match_spec() | {atom(), match_spec()}.
 
--callback start(Partition::integer(), Config::[proplists:property()])
+-callback start(StoreName::atom(), Config::[proplists:property()])
     -> {ok, State::any()} | {error, Reason::any()}.
 -callback stop(State::any())
     -> ok.
+
+%% Status
+-callback nodes(State::any())
+    -> [node()].
 -callback status(State::any())
     -> [proplists:property()].
 

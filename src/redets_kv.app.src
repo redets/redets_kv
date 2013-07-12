@@ -1,5 +1,5 @@
-{application, redets, [
-    {description, "Storage engine inspired by Redis and ETS."},
+{application, redets_kv, [
+    {description, "Key value storage engine inspired by Redis and ETS."},
     {vsn, "0.0.0"},
     {modules, []},
     {registered, []},
@@ -8,6 +8,6 @@
         stdlib,
         sasl
     ]},
-    {mod, {redets_app, []}},
+    {mod, {redets_kv_app, []}},
     {env, []}
 ]}.

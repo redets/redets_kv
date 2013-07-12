@@ -6,33 +6,41 @@
 %%% @end
 %%% Created :   2 Jul 2013 by Andrew Bennett <andrew@pagodabox.com>
 %%%-------------------------------------------------------------------
--module(redets_ets_backend).
--behaviour(redets_backend).
+-module(redets_kv_ets_backend).
+-behaviour(redets_kv_backend).
 
-%% redets_backend callbacks
--export([start/2, stop/1, status/1]).
+%% redets_kv_backend callbacks
+-export([start/2, stop/1]).
+-export([nodes/1, status/1]). %% Status
 -export([search/2]). %% Search
 -export([del/3, get/3, mget/3, mset/3, set/4]). %% Strings
 -export([hdel/4, hget/4, hgetall/3, hmget/4, hmset/4, hset/5]). %% Hashes
 -export([sadd/4, sismember/4, smembers/3, srem/4]). %% Sets
 
--define(SNAME(R), list_to_atom("redets_set_"++atom_to_list(R))).
+-define(SNAME(R), list_to_atom("redets_kv_set_"++atom_to_list(R))).
 
 -record(state, {
     set = undefined :: undefined | ets:tid()
 }).
 
 %%%===================================================================
-%%% redets_backend callbacks
+%%% redets_kv_backend callbacks
 %%%===================================================================
 
-start(Ref, _Config) ->
-    Set = ets:new(?SNAME(Ref), [ordered_set, public, named_table]),
+start(StoreName, _Config) ->
+    Set = ets:new(?SNAME(StoreName), [ordered_set, public, named_table]),
     {ok, #state{set=Set}}.
 
 stop(#state{set=Set}) ->
     catch ets:delete(Set),
     ok.
+
+%%%===================================================================
+%%% Status
+%%%===================================================================
+
+nodes(#state{}) ->
+    erlang:nodes().
 
 status(#state{set=Set}) ->
     [{set, ets:info(Set)}].
