@@ -1,5 +1,5 @@
 *.version
-src/redets_version.hrl
+src/redets_kv_version.hrl
 rel/pkg/*.gz
 rel/pkg/*.tar
 gproc_*
@@ -15,11 +15,11 @@ Mnesia.*
 erl_crash.dump
 *.beam
 standalone.config
-rel/redets
-rel/redets.tar.bz2
+rel/redets_kv
+rel/redets_kv.tar.bz2
 /rebar
 /doc/
 /dev
 /log
 /rel/vars/dev*_vars.config
-/.redets.plt
+/.redets_kv.plt
