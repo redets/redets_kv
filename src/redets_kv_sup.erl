@@ -58,7 +58,6 @@ init([]) ->
         undefined ->
             []
     end,
-    io:format("Config: ~p~n", [Config]),
     Stores = [ redets_kv_config:list_to_store(L) || L <- Config ],
     StoreSupSpecs = [ store_sup_spec(Store) || Store <- Stores ],
     {ok, {{one_for_one, 5, 60}, [call_fsm_sup_spec() | StoreSupSpecs]}}.
