@@ -51,7 +51,7 @@ call(StoreName, Op, Params, Timeout) ->
 call_after(Timeout, StoreName, Op, Params) ->
     Val = fun() ->
         Ref = erlang:start_timer(Timeout, StoreName, '$redets_kv_timeout'),
-        Timestamp = redets_kv_util:timestamp(),
+        Timestamp = redets_kv_util:timestamp() + (Timeout / 1000),
         {Ref, Timestamp}
     end,
     case call(StoreName, getset, ['$redets_kv_timeout', {Op, Params}, {'$redets_kv_function', Val}]) of
