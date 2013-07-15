@@ -15,7 +15,7 @@
 -export([manual_start/0, new_store/1, rm_store/1, start_link/1]).
 
 %% Storage API
--export([call/3, call/4, cast/3]).
+-export([call/3, call/4, call_after/4, cast/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -48,6 +48,22 @@ call(StoreName, Op, Params) ->
 call(StoreName, Op, Params, Timeout) ->
     gen_server:call(StoreName, {call, Op, Params}, Timeout).
 
+call_after(Timeout, StoreName, Op, Params) ->
+    Val = fun() ->
+        Ref = erlang:start_timer(Timeout, StoreName, '$redets_kv_timeout'),
+        Timestamp = redets_kv_util:timestamp(),
+        {Ref, Timestamp}
+    end,
+    case call(StoreName, getset, ['$redets_kv_timeout', {Op, Params}, {'$redets_kv_function', Val}]) of
+        {ok, {OldRef, _OldTimestamp}} ->
+            catch erlang:cancel_timer(OldRef),
+            ok;
+        {ok, _} ->
+            ok;
+        Error ->
+            Error
+    end.
+
 cast(StoreName, Op, Params) ->
     gen_server:cast(StoreName, {call, Op, Params}).
 
@@ -77,6 +93,9 @@ handle_cast({reply, Reply, From}, Store) ->
 handle_cast(_Request, State) ->
     {noreply, State}.
 
+handle_info({timeout, Ref, '$redets_kv_timeout'}, Store) ->
+    {ok, _} = redets_kv_call_fsm_sup:call(Store, handle_timeout, [Ref], undefined),
+    {noreply, Store};
 handle_info(_Info, State) ->
     {noreply, State}.
 

@@ -11,7 +11,7 @@
 -export([end_per_group/2]).
 
 %% Tests.
--export([strings_single/1, strings_multiple/1, hashes_single/1, hashes_multiple/1, sets_single/1, sets_multiple/1]).
+-export([strings_single/1, strings_multiple/1, hashes_single/1, hashes_multiple/1, sets_single/1, sets_multiple/1, handle_timeouts/1]).
 
 all() ->
     [
@@ -25,7 +25,8 @@ groups() ->
         hashes_single,
         hashes_multiple,
         sets_single,
-        sets_multiple
+        sets_multiple,
+        handle_timeouts
     ],
     [
         {test_ets, [parallel], Tests}
@@ -65,6 +66,9 @@ strings_single(Config) ->
     {ok, val} = redets_kv:call(Store, get, [Bucket, string]),
     ok = redets_kv:call(Store, del, [Bucket, [string]]),
     {ok, undefined} = redets_kv:call(Store, get, [Bucket, string]),
+    {ok, undefined} = redets_kv:call(Store, getset, [Bucket, string, val0]),
+    {ok, val0} = redets_kv:call(Store, getset, [Bucket, string, val1]),
+    {ok, val1} = redets_kv:call(Store, getdel, [Bucket, string]),
     ok.
 
 strings_multiple(Config) ->
@@ -121,6 +125,23 @@ sets_multiple(Config) ->
     {ok, [a]} = redets_kv:call(Store, smembers, [Bucket, mset]),
     ok = redets_kv:call(Store, del, [Bucket, [mset]]),
     {ok, []} = redets_kv:call(Store, smembers, [Bucket, mset]),
+    ok.
+
+handle_timeouts(Config) ->
+    Bucket = ?config(bucket, Config),
+    Store = ?config(store, Config),
+    {ok, []} = redets_kv:call(Store, smembers, [Bucket, tokens]),
+    ok = redets_kv:call(Store, sadd, [Bucket, tokens, [a,b,c]]),
+    {ok, Ret0} = redets_kv:call(Store, smembers, [Bucket, tokens]),
+    [a,b,c] = lists:sort(Ret0),
+    ok = redets_kv:call_after(1000, Store, srem, [Bucket, tokens, [a,c]]),
+    {ok, Ret1} = redets_kv:call(Store, smembers, [Bucket, tokens]),
+    [a,b,c] = lists:sort(Ret1),
+    _ = timer:sleep(1100),
+    {ok, Ret2} = redets_kv:call(Store, smembers, [Bucket, tokens]),
+    [b] = lists:sort(Ret2),
+    ok = redets_kv:call(Store, del, [Bucket, [tokens]]),
+    {ok, []} = redets_kv:call(Store, smembers, [Bucket, tokens]),
     ok.
 
 %%--------------------------------------------------------------------

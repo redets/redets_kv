@@ -22,7 +22,11 @@
 -callback status(State::any())
     -> [proplists:property()].
 
-%% Search
+%% Persistence & Search
+-callback handle_timeout(Ref::reference(), State::any())
+    -> {ok, State::any()} | {error, Reason::any(), State::any()}.
+-callback match_object(Bucket::bucket(), MatchPattern::ets:match_pattern(), State::any())
+    -> {ok, Records::[any()], State::any()} | {error, Reason::any(), State::any()}.
 -callback search(MatchSpec::match_spec(), State::any())
     -> {ok, Vals::[any()], State::any()} | {error, Reason::any(), State::any()}.
 
@@ -31,6 +35,14 @@
     -> {ok, State::any()} | {error, Reason::any(), State::any()}.
 -callback get(Bucket::bucket(), Key::any(), State::any())
     -> {ok, Val::any(), State::any()} | {error, Reason::any(), State::any()}.
+-callback getdel(Bucket::bucket(), Key::any(), State::any())
+    -> {ok, Val::any(), State::any()} | {error, Reason::any(), State::any()}.
+-callback getset(Bucket::bucket(), Key::any(), Val::any(), State::any())
+    -> {ok, OldVal::any(), State::any()} | {error, Reason::any(), State::any()}.
+-callback mget(Bucket::bucket(), Keys::[any()], State::any())
+    -> {ok, Vals::[any()], State::any()} | {error, Reason::any(), State::any()}.
+-callback mset(Bucket::bucket(), KeyVals::[{any(), any()}], State::any())
+    -> {ok, State::any()} | {error, Reason::any(), State::any()}.
 -callback set(Bucket::bucket(), Key::any(), Val::any(), State::any())
     -> {ok, State::any()} | {error, Reason::any(), State::any()}.
 

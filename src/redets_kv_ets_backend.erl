@@ -12,15 +12,16 @@
 %% redets_kv_backend callbacks
 -export([start/2, stop/1]).
 -export([nodes/1, status/1]). %% Status
--export([search/2]). %% Search
--export([del/3, get/3, mget/3, mset/3, set/4]). %% Strings
+-export([handle_timeout/2, match_object/3, search/2]). %% Persistence & Search
+-export([del/3, get/3, getdel/3, getset/4, mget/3, mset/3, set/4]). %% Strings
 -export([hdel/4, hget/4, hgetall/3, hmget/4, hmset/4, hset/5]). %% Hashes
 -export([sadd/4, sismember/4, smembers/3, srem/4]). %% Sets
 
 -define(SNAME(R), list_to_atom("redets_kv_set_"++atom_to_list(R))).
 
 -record(state, {
-    set = undefined :: undefined | ets:tid()
+    name = undefined :: undefined | atom(),
+    set  = undefined :: undefined | ets:tid()
 }).
 
 %%%===================================================================
@@ -29,7 +30,7 @@
 
 start(StoreName, _Config) ->
     Set = ets:new(?SNAME(StoreName), [ordered_set, public, named_table]),
-    {ok, #state{set=Set}}.
+    {ok, #state{name=StoreName, set=Set}}.
 
 stop(#state{set=Set}) ->
     catch ets:delete(Set),
@@ -46,8 +47,31 @@ status(#state{set=Set}) ->
     [{set, ets:info(Set)}].
 
 %%%===================================================================
-%%% Search
+%%% Persistence & Search
 %%%===================================================================
+
+handle_timeout(Ref, State) ->
+    case match_object('$redets_kv_timeout', {'_', {Ref, '_'}}, State) of
+        {ok, [{{Op, Params}, {Ref, _Timestamp}}], State2} ->
+            case del('$redets_kv_timeout', [{Op, Params}], State2) of
+                {ok, State3} ->
+                    erlang:apply(?MODULE, Op, Params ++ [State3]);
+                DelError ->
+                    DelError
+            end;
+        {ok, BadResult, State2} ->
+            {error, BadResult, State2};
+        MatchObjectError ->
+            MatchObjectError
+    end.
+
+match_object(Bucket, MatchPattern, State) ->
+    case pattern_to_spec(Bucket, MatchPattern) of
+        MatchSpec when is_list(MatchSpec) ->
+            bucket_select(Bucket, MatchSpec, State);
+        Error ->
+            {error, Error, State}
+    end.
 
 search(MatchSpec, State=#state{set=Set}) ->
     {ok, ets:select(Set, MatchSpec), State}.
@@ -74,12 +98,40 @@ get(Bucket, Key, State=#state{set=Set}) ->
             {error, Error, State}
     end.
 
+getdel(Bucket, Key, State) ->
+    case get(Bucket, Key, State) of
+        {ok, OldVal, State2} ->
+            case del(Bucket, [Key], State2) of
+                {ok, State3} ->
+                    {ok, OldVal, State3};
+                DelError ->
+                    DelError
+            end;
+        GetError ->
+            GetError
+    end.
+
+getset(Bucket, Key, Val, State) ->
+    case get(Bucket, Key, State) of
+        {ok, OldVal, State2} ->
+            case set(Bucket, Key, Val, State2) of
+                {ok, State3} ->
+                    {ok, OldVal, State3};
+                SetError ->
+                    SetError
+            end;
+        GetError ->
+            GetError
+    end.
+
 mget(Bucket, Keys, State) ->
     mget(Bucket, Keys, State, []).
 
 mset(Bucket, KeyVals, State) ->
     mset(Bucket, KeyVals, State, []).
 
+set(Bucket, Key, {'$redets_kv_function', Fun}, State) when is_function(Fun) ->
+    set(Bucket, Key, Fun(), State);
 set(Bucket, Key, Val, State=#state{set=Set}) ->
     true = ets:insert(Set, {{Bucket, Key}, Val}),
     {ok, State}.
@@ -156,6 +208,52 @@ srem(Bucket, Key, [Val | Vals], State=#state{set=Set}) ->
 %%%-------------------------------------------------------------------
 %%% Internal functions
 %%%-------------------------------------------------------------------
+
+%% Persistence & Search
+bucket_select(Bucket, MatchSpec, State=#state{set=Set}) ->
+    bucket_select(ets:select(Set, MatchSpec), Bucket, State, []).
+
+bucket_select([], _Bucket, State, Acc) ->
+    {ok, lists:reverse(Acc), State};
+bucket_select([{{Bucket, Key}} | Results], Bucket, State, Acc) ->
+    bucket_select(Results, Bucket, State, [{Key} | Acc]);
+bucket_select([{{Bucket, Key}, Val} | Results], Bucket, State, Acc) ->
+    bucket_select(Results, Bucket, State, [{Key, Val} | Acc]);
+bucket_select([BadResult | _], _Bucket, State, _Acc) ->
+    {error, BadResult, State}.
+
+compile_pattern(Bucket, '_') ->
+    [
+        {{Bucket, '_'}, '_'}, %% Strings
+        {{Bucket, {'_', '_'}}, '_'}, %% Hashes
+        {{Bucket, {'_', '_'}}} %% Sets
+    ];
+compile_pattern(Bucket, Atom) when is_atom(Atom) ->
+    case atom_to_binary(Atom, utf8) of
+        << $$, Rest/binary >> ->
+            case catch binary_to_integer(Rest) of
+                Integer when is_integer(Integer) ->
+                    compile_pattern(Bucket, '_');
+                _ ->
+                    [Atom]
+            end;
+        _ ->
+            [Atom]
+    end;
+compile_pattern(Bucket, {Key}) ->
+    [{{Bucket, Key}}];
+compile_pattern(Bucket, {Key, Val}) ->
+    [{{Bucket, Key}, Val}];
+compile_pattern(_Bucket, _BadArg) ->
+    [].
+
+pattern_to_spec(Bucket, Pattern) ->
+    pattern_to_match_spec(compile_pattern(Bucket, Pattern), []).
+
+pattern_to_match_spec([], Spec) ->
+    lists:reverse(Spec);
+pattern_to_match_spec([Pattern | Patterns], Spec) ->
+    pattern_to_match_spec(Patterns, [{Pattern, [], ['$_']} | Spec]).
 
 %% Strings
 mget(_Bucket, [], State, Acc) ->
