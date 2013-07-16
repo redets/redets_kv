@@ -128,11 +128,25 @@ incr(Bucket, Key, State) ->
     incrby(Bucket, Key, 1, State).
 
 incrby(Bucket, Key, Increment, State=#state{set=Set}) ->
-    case catch ets:update_counter(Set, {Bucket, Key}, {2, Increment}) of
-        Val when is_integer(Val) ->
-            {ok, Val, State};
-        Error ->
-            {error, Error, State}
+    case get(Bucket, Key, State) of
+        {ok, OldVal, State2} when is_integer(OldVal) ->
+            case catch ets:update_counter(Set, {Bucket, Key}, {2, Increment}) of
+                Val when is_integer(Val) ->
+                    {ok, Val, State2};
+                Error ->
+                    {error, Error, State2}
+            end;
+        {ok, undefined, State2} ->
+            case set(Bucket, Key, Increment, State2) of
+                {ok, State3} ->
+                    {ok, Increment, State3};
+                {error, Reason, State3} ->
+                    {error, Reason, State3}
+            end;
+        {ok, OldVal, State2} ->
+            {error, {non_integer_value, OldVal}, State2};
+        {error, Reason, State2} ->
+            {error, Reason, State2}
     end.
 
 mget(Bucket, Keys, State) ->
@@ -179,11 +193,25 @@ hincr(Bucket, Key, Field, State) ->
     hincrby(Bucket, Key, Field, 1, State).
 
 hincrby(Bucket, Key, Field, Increment, State=#state{set=Set}) ->
-    case catch ets:update_counter(Set, {Bucket, {Key, Field}}, {2, Increment}) of
-        Val when is_integer(Val) ->
-            {ok, Val, State};
-        Error ->
-            {error, Error, State}
+    case hget(Bucket, Key, Field, State) of
+        {ok, OldVal, State2} when is_integer(OldVal) ->
+            case catch ets:update_counter(Set, {Bucket, {Key, Field}}, {2, Increment}) of
+                Val when is_integer(Val) ->
+                    {ok, Val, State2};
+                Error ->
+                    {error, Error, State2}
+            end;
+        {ok, undefined, State2} ->
+            case hset(Bucket, Key, Field, Increment, State2) of
+                {ok, State3} ->
+                    {ok, Increment, State3};
+                {error, Reason, State3} ->
+                    {error, Reason, State3}
+            end;
+        {ok, OldVal, State2} ->
+            {error, {non_integer_value, OldVal}, State2};
+        {error, Reason, State2} ->
+            {error, Reason, State2}
     end.
 
 hmget(Bucket, Key, Fields, State) ->

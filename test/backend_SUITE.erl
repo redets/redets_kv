@@ -157,6 +157,10 @@ increments(Config) ->
     {ok, 51} = redets_kv:call(Store, incrby, [Bucket, inc, -50]),
     ok = redets_kv:call(Store, del, [Bucket, [inc]]),
     {ok, undefined} = redets_kv:call(Store, get, [Bucket, inc]),
+    {ok, 1} = redets_kv:call(Store, incr, [Bucket, inc]),
+    ok = redets_kv:call(Store, del, [Bucket, [inc]]),
+    {ok, 100} = redets_kv:call(Store, incrby, [Bucket, inc, 100]),
+    ok = redets_kv:call(Store, del, [Bucket, [inc]]),
     {ok, undefined} = redets_kv:call(Store, hget, [Bucket, hinc, key]),
     ok = redets_kv:call(Store, hset, [Bucket, hinc, key, 0]),
     {ok, 0} = redets_kv:call(Store, hget, [Bucket, hinc, key]),
@@ -166,6 +170,10 @@ increments(Config) ->
     {ok, 51} = redets_kv:call(Store, hincrby, [Bucket, hinc, key, -50]),
     ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
     {ok, undefined} = redets_kv:call(Store, get, [Bucket, hinc]),
+    {ok, 1} = redets_kv:call(Store, hincr, [Bucket, hinc, key]),
+    ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
+    {ok, 100} = redets_kv:call(Store, hincrby, [Bucket, hinc, key, 100]),
+    ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
     ok.
 
 %%--------------------------------------------------------------------
