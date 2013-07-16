@@ -11,7 +11,7 @@
 -export([end_per_group/2]).
 
 %% Tests.
--export([strings_single/1, strings_multiple/1, hashes_single/1, hashes_multiple/1, sets_single/1, sets_multiple/1, handle_timeouts/1]).
+-export([strings_single/1, strings_multiple/1, hashes_single/1, hashes_multiple/1, sets_single/1, sets_multiple/1, handle_timeouts/1, increments/1]).
 
 all() ->
     [
@@ -26,7 +26,8 @@ groups() ->
         hashes_multiple,
         sets_single,
         sets_multiple,
-        handle_timeouts
+        handle_timeouts,
+        increments
     ],
     [
         {test_ets, [parallel], Tests}
@@ -142,6 +143,29 @@ handle_timeouts(Config) ->
     [b] = lists:sort(Ret2),
     ok = redets_kv:call(Store, del, [Bucket, [tokens]]),
     {ok, []} = redets_kv:call(Store, smembers, [Bucket, tokens]),
+    ok.
+
+increments(Config) ->
+    Bucket = ?config(bucket, Config),
+    Store = ?config(store, Config),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, inc]),
+    ok = redets_kv:call(Store, set, [Bucket, inc, 0]),
+    {ok, 0} = redets_kv:call(Store, get, [Bucket, inc]),
+    {ok, 1} = redets_kv:call(Store, incr, [Bucket, inc]),
+    {ok, 1} = redets_kv:call(Store, get, [Bucket, inc]),
+    {ok, 101} = redets_kv:call(Store, incrby, [Bucket, inc, 100]),
+    {ok, 51} = redets_kv:call(Store, incrby, [Bucket, inc, -50]),
+    ok = redets_kv:call(Store, del, [Bucket, [inc]]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, inc]),
+    {ok, undefined} = redets_kv:call(Store, hget, [Bucket, hinc, key]),
+    ok = redets_kv:call(Store, hset, [Bucket, hinc, key, 0]),
+    {ok, 0} = redets_kv:call(Store, hget, [Bucket, hinc, key]),
+    {ok, 1} = redets_kv:call(Store, hincr, [Bucket, hinc, key]),
+    {ok, 1} = redets_kv:call(Store, hget, [Bucket, hinc, key]),
+    {ok, 101} = redets_kv:call(Store, hincrby, [Bucket, hinc, key, 100]),
+    {ok, 51} = redets_kv:call(Store, hincrby, [Bucket, hinc, key, -50]),
+    ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, hinc]),
     ok.
 
 %%--------------------------------------------------------------------

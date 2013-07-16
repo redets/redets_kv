@@ -13,8 +13,8 @@
 -export([start/2, stop/1]).
 -export([nodes/1, status/1]). %% Status
 -export([handle_timeout/2, match_object/3, search/2]). %% Persistence & Search
--export([del/3, get/3, getdel/3, getset/4, mget/3, mset/3, set/4]). %% Strings
--export([hdel/4, hget/4, hgetall/3, hmget/4, hmset/4, hset/5]). %% Hashes
+-export([del/3, get/3, getdel/3, getset/4, incr/3, incrby/4, mget/3, mset/3, set/4]). %% Strings
+-export([hdel/4, hget/4, hgetall/3, hincr/4, hincrby/5, hmget/4, hmset/4, hset/5]). %% Hashes
 -export([sadd/4, sismember/4, smembers/3, srem/4]). %% Sets
 
 -define(SNAME(R), list_to_atom("redets_kv_set_"++atom_to_list(R))).
@@ -124,6 +124,17 @@ getset(Bucket, Key, Val, State) ->
             GetError
     end.
 
+incr(Bucket, Key, State) ->
+    incrby(Bucket, Key, 1, State).
+
+incrby(Bucket, Key, Increment, State=#state{set=Set}) ->
+    case catch ets:update_counter(Set, {Bucket, Key}, {2, Increment}) of
+        Val when is_integer(Val) ->
+            {ok, Val, State};
+        Error ->
+            {error, Error, State}
+    end.
+
 mget(Bucket, Keys, State) ->
     mget(Bucket, Keys, State, []).
 
@@ -160,6 +171,17 @@ hgetall(Bucket, Key, State=#state{set=Set}) ->
     case ets:match_object(Set, {{Bucket, {Key, '_'}}, '_'}) of
         Objects when is_list(Objects) ->
             hgetall(Objects, Bucket, Key, State, []);
+        Error ->
+            {error, Error, State}
+    end.
+
+hincr(Bucket, Key, Field, State) ->
+    hincrby(Bucket, Key, Field, 1, State).
+
+hincrby(Bucket, Key, Field, Increment, State=#state{set=Set}) ->
+    case catch ets:update_counter(Set, {Bucket, {Key, Field}}, {2, Increment}) of
+        Val when is_integer(Val) ->
+            {ok, Val, State};
         Error ->
             {error, Error, State}
     end.

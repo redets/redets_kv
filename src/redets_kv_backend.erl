@@ -39,6 +39,10 @@
     -> {ok, Val::any(), State::any()} | {error, Reason::any(), State::any()}.
 -callback getset(Bucket::bucket(), Key::any(), Val::any(), State::any())
     -> {ok, OldVal::any(), State::any()} | {error, Reason::any(), State::any()}.
+-callback incr(Bucket::bucket(), Key::any(), State::any())
+    -> {ok, Val::integer(), State::any()} | {error, Reason::any(), State::any()}.
+-callback incrby(Bucket::bucket(), Key::any(), Increment::integer(), State::any())
+    -> {ok, Val::integer(), State::any()} | {error, Reason::any(), State::any()}.
 -callback mget(Bucket::bucket(), Keys::[any()], State::any())
     -> {ok, Vals::[any()], State::any()} | {error, Reason::any(), State::any()}.
 -callback mset(Bucket::bucket(), KeyVals::[{any(), any()}], State::any())
@@ -53,6 +57,10 @@
     -> {ok, Val::any(), State::any()} | {error, Reason::any(), State::any()}.
 -callback hgetall(Bucket::bucket(), Key::any(), State::any())
     -> {ok, FieldVals::[{any(),any()}], State::any()} | {error, Reason::any(), State::any()}.
+-callback hincr(Bucket::bucket(), Key::any(), Field::any(), State::any())
+    -> {ok, Val::integer(), State::any()} | {error, Reason::any(), State::any()}.
+-callback hincrby(Bucket::bucket(), Key::any(), Field::any(), Increment::integer(), State::any())
+    -> {ok, Val::integer(), State::any()} | {error, Reason::any(), State::any()}.
 -callback hmget(Bucket::bucket(), Key::any(), Fields::[any()], State::any())
     -> {ok, Vals::[any()], State::any()} | {error, Reason::any(), State::any()}.
 -callback hmset(Bucket::bucket(), Key::any(), FieldVals::[{any(), any()}], State::any())
