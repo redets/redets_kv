@@ -25,6 +25,8 @@
 %% Persistence & Search
 -callback handle_timeout(Ref::reference(), State::any())
     -> {ok, State::any()} | {error, Reason::any(), State::any()}.
+-callback match_delete(Bucket::bucket(), MatchPattern::ets:match_pattern(), State::any())
+    -> {ok, NumDeleted::integer(), State::any()} | {error, Reason::any(), State::any()}.
 -callback match_object(Bucket::bucket(), MatchPattern::ets:match_pattern(), State::any())
     -> {ok, Records::[any()], State::any()} | {error, Reason::any(), State::any()}.
 -callback search(MatchSpec::match_spec(), State::any())

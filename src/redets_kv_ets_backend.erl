@@ -12,7 +12,7 @@
 %% redets_kv_backend callbacks
 -export([start/2, stop/1]).
 -export([nodes/1, status/1]). %% Status
--export([handle_timeout/2, match_object/3, search/2]). %% Persistence & Search
+-export([handle_timeout/2, match_delete/3, match_object/3, search/2]). %% Persistence & Search
 -export([del/3, get/3, getdel/3, getset/4, incr/3, incrby/4, mget/3, mset/3, set/4]). %% Strings
 -export([hdel/4, hget/4, hgetall/3, hincr/4, hincrby/5, hmget/4, hmset/4, hset/5]). %% Hashes
 -export([sadd/4, sismember/4, smembers/3, srem/4]). %% Sets
@@ -65,8 +65,17 @@ handle_timeout(Ref, State) ->
             MatchObjectError
     end.
 
+match_delete(Bucket, MatchPattern, State=#state{set=Set}) ->
+    case pattern_to_spec(Bucket, MatchPattern, true) of
+        MatchSpec when is_list(MatchSpec) ->
+            N = ets:select_delete(Set, MatchSpec),
+            {ok, N, State};
+        Error ->
+            {error, Error, State}
+    end.
+
 match_object(Bucket, MatchPattern, State) ->
-    case pattern_to_spec(Bucket, MatchPattern) of
+    case pattern_to_spec(Bucket, MatchPattern, '$_') of
         MatchSpec when is_list(MatchSpec) ->
             bucket_select(Bucket, MatchSpec, State);
         Error ->
@@ -297,13 +306,13 @@ compile_pattern(Bucket, {Key, Val}) ->
 compile_pattern(_Bucket, _BadArg) ->
     [].
 
-pattern_to_spec(Bucket, Pattern) ->
-    pattern_to_match_spec(compile_pattern(Bucket, Pattern), []).
+pattern_to_spec(Bucket, Pattern, End) ->
+    pattern_to_match_spec(compile_pattern(Bucket, Pattern), End, []).
 
-pattern_to_match_spec([], Spec) ->
+pattern_to_match_spec([], _End, Spec) ->
     lists:reverse(Spec);
-pattern_to_match_spec([Pattern | Patterns], Spec) ->
-    pattern_to_match_spec(Patterns, [{Pattern, [], ['$_']} | Spec]).
+pattern_to_match_spec([Pattern | Patterns], End, Spec) ->
+    pattern_to_match_spec(Patterns, End, [{Pattern, [], [End]} | Spec]).
 
 %% Strings
 mget(_Bucket, [], State, Acc) ->

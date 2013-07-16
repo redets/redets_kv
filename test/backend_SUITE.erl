@@ -11,7 +11,17 @@
 -export([end_per_group/2]).
 
 %% Tests.
--export([strings_single/1, strings_multiple/1, hashes_single/1, hashes_multiple/1, sets_single/1, sets_multiple/1, handle_timeouts/1, increments/1]).
+-export([
+    strings_single/1,
+    strings_multiple/1,
+    hashes_single/1,
+    hashes_multiple/1,
+    sets_single/1,
+    sets_multiple/1,
+    handle_timeouts/1,
+    increments/1,
+    matches/1
+]).
 
 all() ->
     [
@@ -27,7 +37,8 @@ groups() ->
         sets_single,
         sets_multiple,
         handle_timeouts,
-        increments
+        increments,
+        matches
     ],
     [
         {test_ets, [parallel], Tests}
@@ -174,6 +185,25 @@ increments(Config) ->
     ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
     {ok, 100} = redets_kv:call(Store, hincrby, [Bucket, hinc, key, 100]),
     ok = redets_kv:call(Store, del, [Bucket, [hinc]]),
+    ok.
+
+matches(Config) ->
+    Bucket = ?config(bucket, Config),
+    Store = ?config(store, Config),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m0]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m1]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m2]),
+    ok = redets_kv:call(Store, sadd, [Bucket, m0, [x,y,z]]),
+    ok = redets_kv:call(Store, sadd, [Bucket, m1, [x,y]]),
+    ok = redets_kv:call(Store, sadd, [Bucket, m2, [x]]),
+    {ok, Ret0} = redets_kv:call(Store, match_object, [Bucket, {{'_', x}}]),
+    [{{m0,x}}, {{m1,x}}, {{m2,x}}] = lists:sort(Ret0),
+    {ok, 3} = redets_kv:call(Store, match_delete, [Bucket, {{'_', x}}]),
+    {ok, []} = redets_kv:call(Store, match_object, [Bucket, {{'_', x}}]),
+    ok = redets_kv:call(Store, del, [Bucket, [m0, m1, m2]]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m0]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m1]),
+    {ok, undefined} = redets_kv:call(Store, get, [Bucket, m2]),
     ok.
 
 %%--------------------------------------------------------------------
